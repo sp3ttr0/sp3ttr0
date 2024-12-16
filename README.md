@@ -1,6 +1,4 @@
-
-'''
-
+```
 #!/bin/bash
 
 #whoami
@@ -22,4 +20,4 @@ declare -A interests=(
     ["sideInterest"]="hacking tools"
     ["enthusiasticAbout"]="AI, Wireless Hacking, Web App Hacking"
 )
-'''
+```
