@@ -10,43 +10,30 @@ Cybersecurity Enthusiast | Offensive Security Learner | AI & Hacking Tools Explo
 ```
 
 🛠️ What I Do
-
-Code in: Java · PHP · Python · Bash · SQL
-
-IDEs I vibe with: VS Code · Notepad++
-
-Love building & breaking: hacking tools, automation scripts
-
+<br>
+Code in: Java · PHP · Python · Bash · SQL<br>
+IDEs I vibe with: VS Code · Notepad++<br>
+Love building & breaking: hacking tools, automation scripts<br>
 <br>
 🎓 Education
-
-BS Computer Science
-
-Executive Diploma in Cybersecurity
-
+<br>
+BS Computer Science<br>
+Executive Diploma in Cybersecurity<br>
 <br>
 🎮 Hobbies
-
-PC Gaming 🎮
-
-Watching Movies 🎬
-
-Magic: The Gathering 🧙‍♂️
-
-Reading Cybersecurity Articles 🔐
-
+<br>
+PC Gaming 🎮<br>
+Watching Movies 🎬<br>
+Magic: The Gathering 🧙‍♂️<br>
+Reading Cybersecurity Articles 🔐<br>
 <br>
 🔥 Interests
-
-Main: Cybersecurity 🛡️
-
-Side Quests: Hacking Tools, Exploit Dev 🧨
-
-Enthusiastic About: AI · Wireless Hacking · Web App Hacking
-
 <br>
-
-
+Main: Cybersecurity 🛡️<br>
+Side Quests: Hacking Tools, Exploit Dev 🧨<br>
+Enthusiastic About: AI · Wireless Hacking · Web App Hacking<br>
+<br>
+<br>
 ✨ "Hacking is not about breaking systems, it’s about understanding them deeply."
 
 
