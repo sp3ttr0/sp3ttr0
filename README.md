@@ -1,8 +1,6 @@
 ```
 > whoami
 Computer Programmer | Offensive Security Learner | Cybersecurity Enthusiast | AI & Hacking Tools Explorer
-
-
  _______  _____  _______ _______ _______  ______  _____ 
  |______ |_____] |______    |       |    |_____/ |     |
  ______| |       |______    |       |    |    \_ |_____|
