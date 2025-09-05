@@ -8,7 +8,7 @@ Cybersecurity Enthusiast | Offensive Security Learner | AI & Hacking Tools Explo
  ______| |       |______    |       |    |    \_ |_____|
                                                         
 ```
-
+<br>
 🛠️ What I Do
 <br>
 Code in: Java · PHP · Python · Bash · SQL<br>
@@ -35,5 +35,6 @@ Enthusiastic About: AI · Wireless Hacking · Web App Hacking<br>
 <br>
 <br>
 ✨ "Hacking is not about breaking systems, it’s about understanding them deeply."
+<br>
 
 
