@@ -23,7 +23,7 @@ Executive Diploma in Cybersecurity<br>
 <br>
 PC Gaming 🎮<br>
 Watching Movies 🎬<br>
-Magic: The Gathering 🧙‍♂️<br>
+Magic: The Gathering TCG 🎴<br>
 Reading Cybersecurity Articles 🔐<br>
 <br>
 🔥 Interests
