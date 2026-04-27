@@ -1,92 +1,25 @@
-#!/bin/bash
-# unauth_rpc_scan.sh
-# Usage: ./unauth_rpc_scan.sh <targets_file>
-# Runs `rpcclient -U "" -N <target> -c 'enumprivs'`, prints output to terminal,
-# saves each target's full output to unauth_rpc_results/<target>_rpcclient.txt,
-# and writes successful targets to unauth_rpc_results/unauth_rpc_vuln_targets.txt
-
-set -o errexit
-set -o nounset
-set -o pipefail
-
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <targets_file>"
-    exit 1
-fi
-
-TARGETS_FILE="$1"
-OUTPUT_DIR="unauth_rpc_results"
-OUTPUT_FILE="$OUTPUT_DIR/unauth_rpc_vuln_targets.txt"
-RPC_TIMEOUT=15   # seconds - prevents hanging on slow/unresponsive hosts
-
-# Prepare output directory and file
-mkdir -p "$OUTPUT_DIR"
-> "$OUTPUT_FILE"
-
-if [ ! -f "$TARGETS_FILE" ]; then
-    echo "Error: '$TARGETS_FILE' not found!"
-    exit 1
-fi
-
-echo "[*] Starting Unauthenticated RPC scan on targets from '$TARGETS_FILE'..."
-echo ""
-
-while IFS= read -r target || [ -n "$target" ]; do
-    # Remove inline comments and trim whitespace
-    target="${target%%[#]*}"   # remove inline comments starting with #
-    target="$(echo -n "$target" | xargs)"  # trim leading/trailing whitespace
-    [[ -z "$target" ]] && continue
-
-    # sanitize filename (replace slashes/colons with _)
-    safe_target="$(echo "$target" | sed -E 's/[:\/\\]/_/g')"
-    out_file="$OUTPUT_DIR/${safe_target}_rpcclient.txt"
-
-    echo "------------------------------------------------------------"
-    echo "[*] Scanning: $target"
-    echo "[*] Output file: $out_file"
-    echo "------------------------------------------------------------"
-
-    # Run rpcclient with a timeout so the script doesn't hang indefinitely.
-    # Capture stdout+stderr so we can both print it and save it.
-    if command -v timeout >/dev/null 2>&1; then
-        output="$(timeout "${RPC_TIMEOUT}"s rpcclient -U "" -N "$target" -c 'enumprivs' 2>&1 || true)"
-        retcode=$?
-    else
-        output="$(rpcclient -U "" -N "$target" -c 'enumprivs' 2>&1 || true)"
-        retcode=0
-    fi
-
-    # Print the raw output to terminal and save to per-target file
-    echo "$output"
-    printf "%s\n" "$output" > "$out_file"
-
-    # Determine success/failure based on actual enumprivs output
-    if echo "$output" | grep -qiE "Cannot connect|NT_STATUS|failed|Connection to host failed|refused|No route to host|Could not initialise lsarpc|ERRSRV|ERRDOS|LSA.*failed|OpenPolicy.*failed"; then
-        echo "[-] Failed: $target"
-        echo "[-] See $out_file for details."
-    elif echo "$output" | grep -qiE "Se[A-Za-z]+Privilege|Privilege"; then
-        echo "[+] Success: $target"
-        echo "$target" >> "$OUTPUT_FILE"
-        echo "[+] Full output saved to $out_file"
-    else
-        echo "[-] Failed (No privileges returned): $target"
-        echo "[-] See $out_file for details."
-    fi
-
-    echo ""
-done < "$TARGETS_FILE"
-
-echo "[*] Scan complete."
-echo ""
-echo "[*] Successful targets with enumprivs enabled (saved in $OUTPUT_FILE):"
-echo "---------------------------------------------"
-
-if [ -s "$OUTPUT_FILE" ]; then
-    cat "$OUTPUT_FILE"
-else
-    echo "No successful targets found."
-fi
-
-echo ""
-echo "[*] Per-target outputs saved under: $OUTPUT_DIR/"
-echo "[*] Done."
+[*] 10.251.193.32:3389    - Detected RDP on 10.251.193.32:3389    (name:SVRP000A4573) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A4573.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] 10.251.193.33:3389    - Detected RDP on 10.251.193.33:3389    (name:SVRP000A4576) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A4576.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned  2 of 15 hosts (13% complete)
+[*] 10.251.193.34:3389    - Detected RDP on 10.251.193.34:3389    (name:SVRP000A457C) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A457C.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned  3 of 15 hosts (20% complete)
+[*] 10.251.193.35:3389    - Detected RDP on 10.251.193.35:3389    (name:SVRP000A457F) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A457F.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] 10.251.193.36:3389    - Detected RDP on 10.251.193.36:3389    (name:SVRP000A4581) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A4581.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned  5 of 15 hosts (33% complete)
+[*] 10.251.66.5:3389      - Detected RDP on 10.251.66.5:3389      (name:SVRP000A4586) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A4586.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned  6 of 15 hosts (40% complete)
+[*] 10.251.66.6:3389      - Detected RDP on 10.251.66.6:3389      (name:SVRP000A458A) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A458A.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] 10.251.66.7:3389      - Detected RDP on 10.251.66.7:3389      (name:SVRP000A458B) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A458B.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned  8 of 15 hosts (53% complete)
+[*] 153.2.5.109:3389      - Detected RDP on 153.2.5.109:3389      (name:SVRP00113AD9) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP00113AD9.us.ups.com) (os_version:10.0.17763) (Requires NLA: Yes)
+[*] Scanned  9 of 15 hosts (60% complete)
+[*] 156.134.151.74:3389   - Detected RDP on 156.134.151.74:3389   (name:SVRP00148704) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP00148704.us.ups.com) (os_version:10.0.20348) (Requires NLA: No)
+[*] 156.134.184.36:3389   - Detected RDP on 156.134.184.36:3389   (name:SVRP000A5330) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP000A5330.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] Scanned 11 of 15 hosts (73% complete)
+[*] 156.134.198.22:3389   - Detected RDP on 156.134.198.22:3389   (name:SVRP001067B3) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP001067B3.us.ups.com) (os_version:10.0.17763) (Requires NLA: Yes)
+[*] Scanned 12 of 15 hosts (80% complete)
+[*] 156.134.219.28:3389   - Detected RDP on 156.134.219.28:3389   (name:SVRP00146E51) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP00146E51.us.ups.com) (os_version:10.0.20348) (Requires NLA: Yes)
+[*] 156.134.220.217:3389  - Detected RDP on 156.134.220.217:3389  (name:SVRP001486FF) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP001486FF.us.ups.com) (os_version:10.0.20348) (Requires NLA: No)
+[*] Scanned 14 of 15 hosts (93% complete)
+[*] 156.134.231.49:3389   - Detected RDP on 156.134.231.49:3389   (name:SVRP001067B8) (domain:US) (domain_fqdn:us.ups.com) (server_fqdn:SVRP001067B8.us.ups.com) (os_version:10.0.17763) (Requires NLA: Yes)
+[*] Scanned 15 of 15 hosts (100% complete)
