@@ -1,82 +1,60 @@
-#!/bin/bash
-# ssh_weak_cipher_scan.sh
-# Usage: ./ssh_weak_cipher_scan.sh targets.txt
-
-set -o pipefail
-
-if [ $# -ne 1 ]; then
-    echo "Usage: $0 <targets_file>"
-    exit 1
-fi
-
-TARGETS_FILE="$1"
-OUTPUT_DIR="ssh_weak_results"
-OUTPUT_FILE="$OUTPUT_DIR/weak_ssh_targets.txt"
-TIMEOUT=20
-
-mkdir -p "$OUTPUT_DIR"
-> "$OUTPUT_FILE"
-
-if ! command -v ssh-audit >/dev/null 2>&1; then
-    echo "Install ssh-audit first:"
-    echo "pip install ssh-audit"
-    exit 1
-fi
-
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Install jq first:"
-    echo "sudo apt install jq"
-    exit 1
-fi
-
-echo "[*] Starting SSH Weak Cipher Scan..."
-echo
-
-while IFS= read -r target || [ -n "$target" ]; do
-    target="${target%%[#]*}"
-    target="$(echo -n "$target" | xargs)"
-    [[ -z "$target" ]] && continue
-
-    echo "----------------------------------------"
-    echo "[*] Scanning: $target"
-
-    json_file="$OUTPUT_DIR/${target//[^a-zA-Z0-9._-]/_}.json"
-
-    if command -v timeout >/dev/null 2>&1; then
-        timeout "${TIMEOUT}"s ssh-audit -jj "$target" > "$json_file" 2>/dev/null
-    else
-        ssh-audit -jj "$target" > "$json_file" 2>/dev/null
-    fi
-
-    if [ ! -s "$json_file" ]; then
-        echo "[-] Failed / no response"
-        continue
-    fi
-
-    weak=$(jq -r '
-      .ciphers[]
-      | select(
-          (.name | test("cbc|3des|blowfish|arcfour|rc4|des"; "i"))
-        )
-      | .name
-    ' "$json_file" 2>/dev/null)
-
-    if [ -n "$weak" ]; then
-        echo "[+] Weak Cipher Found: $target"
-        echo "$weak"
-        echo "$target" >> "$OUTPUT_FILE"
-    else
-        echo "[+] Clean"
-    fi
-
-    echo
-done < "$TARGETS_FILE"
-
-echo "========================================"
-echo "[*] Vulnerable Targets:"
-if [ -s "$OUTPUT_FILE" ]; then
-    cat "$OUTPUT_FILE"
-else
-    echo "None found."
-fi
-echo "========================================"
+10.238.90.105:443
+10.238.218.104:443
+10.251.2.102:443
+10.251.2.103:443
+10.251.2.104:443
+10.251.2.107:443
+10.251.2.108:443
+10.251.2.109:443
+10.251.2.110:443
+10.251.2.111:443
+10.251.2.112:443
+10.251.2.113:443
+10.251.2.123:443
+10.251.2.124:443
+10.251.3.217:443
+10.251.37.137:443
+10.251.131.21:443
+10.251.131.22:443
+10.251.164.254:443
+10.251.243.225:443
+10.251.243.226:443
+10.251.248.132:443
+153.2.128.31:443
+153.2.133.132:443
+153.2.164.71:443
+153.2.164.82:443
+153.2.164.93:443
+153.2.128.80:4443
+10.251.243.194:4444
+10.251.243.194:4444
+10.251.243.195:4444
+10.251.173.98:8200
+10.251.173.99:8200
+10.251.173.112:8200
+10.251.173.113:8200
+10.251.173.114:8200
+10.251.173.115:8200
+10.251.173.116:8200
+10.251.237.214:8200
+10.251.237.215:8200
+10.251.237.216:8200
+10.251.237.218:8200
+10.251.237.219:8200
+10.251.237.220:8200
+10.251.237.221:8200
+10.251.2.123:8443
+10.251.2.124:8443
+10.251.3.217:8443
+10.251.128.84:8443
+10.251.243.225:8443
+10.251.243.226:8443
+10.251.248.132:8443
+10.251.2.113:9090
+10.251.2.123:9090
+10.251.2.124:9090
+10.251.3.217:9090
+10.251.243.225:9090
+10.251.243.226:9090
+10.251.248.132:9090
+153.2.129.49:9898
