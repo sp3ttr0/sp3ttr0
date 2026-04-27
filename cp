@@ -2,8 +2,6 @@
 # ssh_weak_cipher_scan.sh
 # Usage: ./ssh_weak_cipher_scan.sh targets.txt
 
-set -o errexit
-set -o nounset
 set -o pipefail
 
 if [ $# -ne 1 ]; then
@@ -14,7 +12,7 @@ fi
 TARGETS_FILE="$1"
 OUTPUT_DIR="ssh_weak_results"
 OUTPUT_FILE="$OUTPUT_DIR/weak_ssh_targets.txt"
-SSH_TIMEOUT=20
+TIMEOUT=20
 
 mkdir -p "$OUTPUT_DIR"
 > "$OUTPUT_FILE"
@@ -22,6 +20,12 @@ mkdir -p "$OUTPUT_DIR"
 if ! command -v ssh-audit >/dev/null 2>&1; then
     echo "Install ssh-audit first:"
     echo "pip install ssh-audit"
+    exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Install jq first:"
+    echo "sudo apt install jq"
     exit 1
 fi
 
@@ -33,47 +37,46 @@ while IFS= read -r target || [ -n "$target" ]; do
     target="$(echo -n "$target" | xargs)"
     [[ -z "$target" ]] && continue
 
-    safe_target="$(echo "$target" | sed -E 's/[:\/\\]/_/g')"
-    out_file="$OUTPUT_DIR/${safe_target}_sshaudit.txt"
-
-    echo "------------------------------------------------"
+    echo "----------------------------------------"
     echo "[*] Scanning: $target"
-    echo "------------------------------------------------"
+
+    json_file="$OUTPUT_DIR/${target//[^a-zA-Z0-9._-]/_}.json"
 
     if command -v timeout >/dev/null 2>&1; then
-        output="$(timeout "${SSH_TIMEOUT}"s ssh-audit "$target" 2>&1 || true)"
+        timeout "${TIMEOUT}"s ssh-audit -jj "$target" > "$json_file" 2>/dev/null
     else
-        output="$(ssh-audit "$target" 2>&1 || true)"
+        ssh-audit -jj "$target" > "$json_file" 2>/dev/null
     fi
 
-    printf "%s\n" "$output" > "$out_file"
-    echo "$output"
-
-    # Detect connection failures
-    if echo "$output" | grep -qiE "connection refused|timed out|could not resolve|no route to host|failed"; then
-        echo "[-] Failed: $target"
-        echo
+    if [ ! -s "$json_file" ]; then
+        echo "[-] Failed / no response"
         continue
     fi
 
-    # ONLY check cipher lines explicitly flagged by ssh-audit
-    weak_found=$(echo "$output" | grep -Ei '^\s*\(enc\).*fail|^\s*\(enc\).*warn')
+    weak=$(jq -r '
+      .ciphers[]
+      | select(
+          (.name | test("cbc|3des|blowfish|arcfour|rc4|des"; "i"))
+        )
+      | .name
+    ' "$json_file" 2>/dev/null)
 
-    if [ -n "$weak_found" ]; then
-        echo "[+] Weak SSH Cipher Found: $target"
+    if [ -n "$weak" ]; then
+        echo "[+] Weak Cipher Found: $target"
+        echo "$weak"
         echo "$target" >> "$OUTPUT_FILE"
     else
-        echo "[+] Clean: $target"
+        echo "[+] Clean"
     fi
 
     echo
 done < "$TARGETS_FILE"
 
-echo "[*] Scan complete."
-echo "[*] Vulnerable targets list: $OUTPUT_FILE"
-
+echo "========================================"
+echo "[*] Vulnerable Targets:"
 if [ -s "$OUTPUT_FILE" ]; then
     cat "$OUTPUT_FILE"
 else
-    echo "No weak SSH cipher targets found."
+    echo "None found."
 fi
+echo "========================================"
