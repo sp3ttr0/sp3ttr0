@@ -1,16 +1,6 @@
 #!/bin/bash
 # ssh_weak_cipher_scan.sh
-# Usage: ./ssh_weak_cipher_scan.sh <targets_file>
-#
-# Runs:
-#   ssh-audit <target>
-#
-# Prints output to terminal
-# Saves each target full output to:
-#   ssh_weak_results/<target>_sshaudit.txt
-#
-# Saves ONLY vulnerable targets (weak ciphers found) to:
-#   ssh_weak_results/weak_ssh_targets.txt
+# Usage: ./ssh_weak_cipher_scan.sh targets.txt
 
 set -o errexit
 set -o nounset
@@ -29,23 +19,16 @@ SSH_TIMEOUT=20
 mkdir -p "$OUTPUT_DIR"
 > "$OUTPUT_FILE"
 
-if [ ! -f "$TARGETS_FILE" ]; then
-    echo "Error: '$TARGETS_FILE' not found!"
-    exit 1
-fi
-
 if ! command -v ssh-audit >/dev/null 2>&1; then
-    echo "Error: ssh-audit not installed."
-    echo "Install with: pip install ssh-audit"
+    echo "Install ssh-audit first:"
+    echo "pip install ssh-audit"
     exit 1
 fi
 
 echo "[*] Starting SSH Weak Cipher Scan..."
-echo "[*] Targets file: $TARGETS_FILE"
-echo ""
+echo
 
 while IFS= read -r target || [ -n "$target" ]; do
-    # remove comments / trim
     target="${target%%[#]*}"
     target="$(echo -n "$target" | xargs)"
     [[ -z "$target" ]] && continue
@@ -53,52 +36,44 @@ while IFS= read -r target || [ -n "$target" ]; do
     safe_target="$(echo "$target" | sed -E 's/[:\/\\]/_/g')"
     out_file="$OUTPUT_DIR/${safe_target}_sshaudit.txt"
 
-    echo "------------------------------------------------------------"
+    echo "------------------------------------------------"
     echo "[*] Scanning: $target"
-    echo "[*] Output file: $out_file"
-    echo "------------------------------------------------------------"
+    echo "------------------------------------------------"
 
     if command -v timeout >/dev/null 2>&1; then
         output="$(timeout "${SSH_TIMEOUT}"s ssh-audit "$target" 2>&1 || true)"
-        retcode=$?
     else
         output="$(ssh-audit "$target" 2>&1 || true)"
-        retcode=0
     fi
 
-    echo "$output"
     printf "%s\n" "$output" > "$out_file"
+    echo "$output"
 
-    # Detect failures
-    if echo "$output" | grep -qiE "connection refused|timed out|could not resolve|no route to host|failed to connect|name or service not known"; then
+    # Detect connection failures
+    if echo "$output" | grep -qiE "connection refused|timed out|could not resolve|no route to host|failed"; then
         echo "[-] Failed: $target"
-        echo "[-] See $out_file for details."
+        echo
+        continue
+    fi
 
-    # Detect weak SSH ciphers / algorithms
-    elif echo "$output" | grep -qiE "3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|blowfish-cbc|cast128-cbc|arcfour|rc4|des-cbc|cbc \(weak\)|weak cipher|legacy cipher"; then
-        echo "[+] Weak Cipher Found: $target"
+    # ONLY check cipher lines explicitly flagged by ssh-audit
+    weak_found=$(echo "$output" | grep -Ei '^\s*\(enc\).*fail|^\s*\(enc\).*warn')
+
+    if [ -n "$weak_found" ]; then
+        echo "[+] Weak SSH Cipher Found: $target"
         echo "$target" >> "$OUTPUT_FILE"
-        echo "[+] Full output saved to $out_file"
-
     else
         echo "[+] Clean: $target"
-        echo "[+] No weak ciphers detected."
     fi
 
-    echo ""
+    echo
 done < "$TARGETS_FILE"
 
 echo "[*] Scan complete."
-echo ""
-echo "[*] Vulnerable targets saved in: $OUTPUT_FILE"
-echo "---------------------------------------------"
+echo "[*] Vulnerable targets list: $OUTPUT_FILE"
 
 if [ -s "$OUTPUT_FILE" ]; then
     cat "$OUTPUT_FILE"
 else
-    echo "No vulnerable targets found."
+    echo "No weak SSH cipher targets found."
 fi
-
-echo ""
-echo "[*] Per-target outputs saved under: $OUTPUT_DIR/"
-echo "[*] Done."
