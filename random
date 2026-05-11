@@ -229,7 +229,7 @@ WEB
 
 WHATWEB
 
-whatweb -a 1 <target>
+whatweb -v -a 1 <target>
 
 
 HTTP Compression Enabled (BREACH Vulnerability)
